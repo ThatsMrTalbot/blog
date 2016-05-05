@@ -1,0 +1,7 @@
+{
+    "logo":         "THATS<br/>MR<br/>TALBOT",
+    "title":        "Adam Talbot's code ramblings",
+    "path":         "./example.git",
+    "templatePath": "./templates",
+    "listen":       ":8080"
+}
