@@ -159,6 +159,8 @@ func (c *Cache) Build(tid string, id string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	logrus.WithField("commit", id).WithField("tree", tid).Info("Building cache")
+
 	if c.cache == nil {
 		c.cache = make(map[string]node)
 	}

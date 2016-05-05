@@ -1,11 +1,13 @@
 package blog
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/ThatsMrTalbot/scaffold"
@@ -70,6 +72,12 @@ func (a *App) Error(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	w.Write([]byte("Error!"))
 }
 
+// NotFound is a not found handler
+func (a *App) NotFound(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	err := fmt.Errorf("Page not found: %s", r.URL.Path)
+	errors.GetErrorHandler(ctx, 404).ServeErrorPage(ctx, w, r, 404, err)
+}
+
 // TrailingSlashMiddleware forces urls without extensions to have trailing slashes
 func (a *App) TrailingSlashMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -92,6 +100,21 @@ func (a *App) GitMiddleware(next scaffold.Handler) scaffold.Handler {
 	})
 }
 
+// LogMetricsMiddleware logs metrics for a request
+func (a *App) LogMetricsMiddleware(next scaffold.Handler) scaffold.Handler {
+	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.CtxServeHTTP(ctx, w, r)
+		duration := time.Since(start)
+		
+		logrus.
+			WithField("start", start).
+			WithField("duration", duration).
+			WithField("url", r.URL.String()).
+			Info("Request served")
+	})
+}
+
 // RedirectHome redirects home
 func (a *App) RedirectHome(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", 302)
@@ -99,16 +122,25 @@ func (a *App) RedirectHome(w http.ResponseWriter, r *http.Request) {
 
 // Routes implements scaffold.Platform.Router
 func (a *App) Routes(router *scaffold.Router) {
-	m := errors.SetErrorHandler(errors.AllStatusCodes, errors.ErrorHandlerFunc(a.Error))
-
+	// WebDav
 	server := webdav.NewServer(a.Repo.Path, "/blog.git/", true)
 	server.ReadOnly = true
-
 	a.git = server
+	router.Handle("blog.git", a.RedirectHome).Use(a.GitMiddleware)	
 
-	router.Use(m)
+	
+	// Error handlers
+	errorHandlerMiddleware := errors.SetErrorHandler(errors.AllStatusCodes, errors.ErrorHandlerFunc(a.Error))	
+	router.Use(errorHandlerMiddleware)
+	router.NotFound(a.NotFound)
+	
+	// Trailing slash middleware
 	router.Use(a.TrailingSlashMiddleware)
-	router.Handle("blog.git", a.RedirectHome).Use(a.GitMiddleware)
+
+	// Metric logging middleware
+	router.Use(a.LogMetricsMiddleware)	
+	
+	// App routes	
 	router.Platform("", a.Blog)
 	router.Platform("branch/:branch", a.Blog)
 	router.Platform("commit/:commit", a.Blog)

@@ -14,19 +14,30 @@ type Config struct {
 	Listen       string `json:"listen"`
 }
 
+// DefaultConfig is the default config
+func DefaultConfig() *Config {
+	return &Config{
+		Logo: "BL<br/>OG",
+		Title: "Git based blogging",
+		Path: "example.git",
+		TemplatePath: "templates",
+		Listen: ":80",
+	}
+}
+
 // OpenConfig opens a config
 func OpenConfig(file string) (*Config, error) {
-	var config Config
+	config := DefaultConfig()
 
 	contents, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(contents, &config)
+	err = json.Unmarshal(contents, config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &config, nil
+	return config, nil
 }
