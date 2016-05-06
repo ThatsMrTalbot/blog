@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/ThatsMrTalbot/scaffold"
 	"github.com/ThatsMrTalbot/scaffold/errors"
 	"github.com/facebookgo/inject"
@@ -66,10 +65,11 @@ func NewApp(config *Config) (*App, error) {
 
 // Error is a scaffold error handler
 func (a *App) Error(ctx context.Context, w http.ResponseWriter, r *http.Request, status int, err error) {
-	logrus.
+	log := GetLog(ctx)
+
+	log.
 		WithError(err).
 		WithField("status", status).
-		WithField("http_request", r).
 		Error("Handler encountered an error")
 
 	w.WriteHeader(status)
@@ -86,11 +86,10 @@ func (a *App) NotFound(ctx context.Context, w http.ResponseWriter, r *http.Reque
 func (a *App) TrailingSlashMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		if path.Ext(r.URL.Path) == "" && !strings.HasSuffix(r.URL.Path, "/") {
-			http.Redirect(w, r, r.URL.Path+"/", 302)
+			log := GetLog(ctx)
+			log.Info("Redirecting to URL with slash appended")
 
-			logrus.
-				WithField("http_request", r).
-				Info("Redirecting to URL with slash appended")
+			http.Redirect(w, r, r.URL.Path+"/", 302)
 		} else {
 			next.CtxServeHTTP(ctx, w, r)
 		}
@@ -101,9 +100,8 @@ func (a *App) TrailingSlashMiddleware(next scaffold.Handler) scaffold.Handler {
 func (a *App) GitMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/blog.git/") {
-			logrus.
-				WithField("http_request", r).
-				Info("Passed request to WebDav")
+			log := GetLog(ctx)
+			log.Info("Passed request to WebDav")
 
 			a.git.ServeHTTP(w, r)
 		} else {
@@ -115,21 +113,28 @@ func (a *App) GitMiddleware(next scaffold.Handler) scaffold.Handler {
 // LogMetricsMiddleware logs metrics for a request
 func (a *App) LogMetricsMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		log := GetLog(ctx)
+
 		start := time.Now()
-		logrus.
-			WithField("http_request", r).
-			WithField("start", start).
-			WithField("url", r.URL.String()).
-			Info("Serving request")
+
+		rid := RequestID(r)
+
+		log = log.WithField("start", start)
+		log = log.WithField("request_id", rid)
+		log = log.WithField("request_headers", r.Header)
+		log = log.WithField("request_method", r.Method)
+		log = log.WithField("request_cookies", r.Cookies())
+		log = log.WithField("url", r.URL.String())
+
+		ctx = StoreLog(ctx, log)
+
+		log.Info("Serving request")
 
 		next.CtxServeHTTP(ctx, w, r)
 
 		duration := time.Since(start)
-		logrus.
-			WithField("http_request", r).
-			WithField("start", start).
+		log.
 			WithField("duration", duration).
-			WithField("url", r.URL.String()).
 			Info("Request served")
 	})
 }
