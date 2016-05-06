@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/ThatsMrTalbot/scaffold"
 	"github.com/ThatsMrTalbot/scaffold/errors"
 	"github.com/gogits/git"
@@ -54,6 +55,10 @@ func (b *Blog) ArticleModel(ctx context.Context, r *http.Request, article *Artic
 
 // Index is the index handler
 func (b *Blog) Index(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	logrus.
+		WithField("http_request", r).
+		Info("Index handler called")
+
 	tid, id, err := getID(ctx, b.Repo)
 	if err != nil {
 		return errors.ConvertErrorStatus(500, err)
@@ -63,6 +68,10 @@ func (b *Blog) Index(ctx context.Context, w http.ResponseWriter, r *http.Request
 	if !ok {
 		return errors.NewErrorStatus(404, "Index not found")
 	}
+
+	logrus.
+		WithField("http_request", r).
+		Info("Loaded index from cache")
 
 	model := b.IndexModel(ctx, r, index)
 
@@ -80,6 +89,10 @@ func (b *Blog) Index(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 // Article is the article handler
 func (b *Blog) Article(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	logrus.
+		WithField("http_request", r).
+		Info("Article handler called")
+
 	tid, id, err := getID(ctx, b.Repo)
 	if err != nil {
 		return errors.ConvertErrorStatus(500, err)
@@ -91,6 +104,10 @@ func (b *Blog) Article(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return errors.NewErrorStatus(404, "Article not found")
 	}
+
+	logrus.
+		WithField("http_request", r).
+		Info("Loaded article from cache")
 
 	model := b.ArticleModel(ctx, r, article)
 
@@ -141,6 +158,11 @@ func (b *Blog) FileLoaderMiddleware(next scaffold.Handler) scaffold.Handler {
 
 		if err == nil {
 			if reader, ok := b.Cache.GetFile(tid, id, path); ok {
+				logrus.
+					WithField("http_request", r).
+					WithField("filepath", path).
+					Info("Serving file")
+
 				if ctype := mime.TypeByExtension(filepath.Ext(r.URL.Path)); ctype != "" {
 					w.Header().Set("Content-Type", ctype)
 				}

@@ -66,7 +66,11 @@ func NewApp(config *Config) (*App, error) {
 
 // Error is a scaffold error handler
 func (a *App) Error(ctx context.Context, w http.ResponseWriter, r *http.Request, status int, err error) {
-	logrus.WithError(err).WithField("status", status).Error("Handler encountered an error")
+	logrus.
+		WithError(err).
+		WithField("status", status).
+		WithField("http_request", r).
+		Error("Handler encountered an error")
 
 	w.WriteHeader(status)
 	w.Write([]byte("Error!"))
@@ -83,6 +87,10 @@ func (a *App) TrailingSlashMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		if path.Ext(r.URL.Path) == "" && !strings.HasSuffix(r.URL.Path, "/") {
 			http.Redirect(w, r, r.URL.Path+"/", 302)
+
+			logrus.
+				WithField("http_request", r).
+				Info("Redirecting to URL with slash appended")
 		} else {
 			next.CtxServeHTTP(ctx, w, r)
 		}
@@ -93,6 +101,10 @@ func (a *App) TrailingSlashMiddleware(next scaffold.Handler) scaffold.Handler {
 func (a *App) GitMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/blog.git/") {
+			logrus.
+				WithField("http_request", r).
+				Info("Passed request to WebDav")
+
 			a.git.ServeHTTP(w, r)
 		} else {
 			next.CtxServeHTTP(ctx, w, r)
@@ -104,10 +116,17 @@ func (a *App) GitMiddleware(next scaffold.Handler) scaffold.Handler {
 func (a *App) LogMetricsMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		next.CtxServeHTTP(ctx, w, r)
-		duration := time.Since(start)
-		
 		logrus.
+			WithField("http_request", r).
+			WithField("start", start).
+			WithField("url", r.URL.String()).
+			Info("Serving request")
+
+		next.CtxServeHTTP(ctx, w, r)
+
+		duration := time.Since(start)
+		logrus.
+			WithField("http_request", r).
 			WithField("start", start).
 			WithField("duration", duration).
 			WithField("url", r.URL.String()).
@@ -126,21 +145,20 @@ func (a *App) Routes(router *scaffold.Router) {
 	server := webdav.NewServer(a.Repo.Path, "/blog.git/", true)
 	server.ReadOnly = true
 	a.git = server
-	router.Handle("blog.git", a.RedirectHome).Use(a.GitMiddleware)	
+	router.Handle("blog.git", a.RedirectHome).Use(a.GitMiddleware)
 
-	
 	// Error handlers
-	errorHandlerMiddleware := errors.SetErrorHandler(errors.AllStatusCodes, errors.ErrorHandlerFunc(a.Error))	
+	errorHandlerMiddleware := errors.SetErrorHandler(errors.AllStatusCodes, errors.ErrorHandlerFunc(a.Error))
 	router.Use(errorHandlerMiddleware)
 	router.NotFound(a.NotFound)
-	
+
 	// Trailing slash middleware
 	router.Use(a.TrailingSlashMiddleware)
 
 	// Metric logging middleware
-	router.Use(a.LogMetricsMiddleware)	
-	
-	// App routes	
+	router.Use(a.LogMetricsMiddleware)
+
+	// App routes
 	router.Platform("", a.Blog)
 	router.Platform("branch/:branch", a.Blog)
 	router.Platform("commit/:commit", a.Blog)

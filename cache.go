@@ -167,7 +167,7 @@ func (c *Cache) Build(tid string, id string) bool {
 
 	sha1, err := git.NewIdFromString(tid)
 	if err != nil {
-		logrus.WithError(err).WithField("id", id).Error("Could not build data")
+		logrus.WithError(err).WithField("tree", tid).Error("Could not build data")
 		return false
 	}
 
@@ -180,7 +180,7 @@ func (c *Cache) Build(tid string, id string) bool {
 
 	scanner, err := tree.Scanner()
 	if err != nil {
-		logrus.WithError(err).WithField("id", id).Error("Could not build data")
+		logrus.WithError(err).WithField("tree", tid).Error("Could not build data")
 		return false
 	}
 
@@ -188,31 +188,74 @@ func (c *Cache) Build(tid string, id string) bool {
 		entry := scanner.TreeEntry()
 
 		name := entry.Name()
+
+		if entry.IsDir() {
+			logrus.
+				WithField("tree", tid).
+				WithField("directory", name).
+				Info("Directory ignored")
+
+			continue
+		}
+
 		if len(name) <= 3 || name[len(name)-3:] != ".md" {
+			logrus.
+				WithField("tree", tid).
+				WithField("filename", name).
+				Info("Non markdown file ignored")
+
 			continue
 		}
 
 		reader, err := entry.Blob().Data()
 		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("tree", tid).
+				WithField("filename", name).
+				Warn("File blob could not be generated")
+
 			continue
 		}
 
 		markdown, err := ioutil.ReadAll(reader)
 		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("tree", tid).
+				WithField("filename", name).
+				Warn("File blob could not be read")
+
 			continue
 		}
 
 		commit, err := c.Repo.GetCommit(id)
 		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("commit", id).
+				Warn("Could not get commit")
+
 			continue
 		}
 
-		fileCommit, err := commit.GetCommitOfRelPath(entry.Name())
+		fileCommit, err := commit.GetCommitOfRelPath(name)
 		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("commit", id).
+				WithField("filename", name).
+				Warn("Could not get relative commit")
+
 			continue
 		}
 
 		if fileCommit.Committer == nil {
+			logrus.
+				WithError(err).
+				WithField("commit", fileCommit.Id.String()).
+				Warn("Committer information not set")
+
 			continue
 		}
 
@@ -222,6 +265,12 @@ func (c *Cache) Build(tid string, id string) bool {
 			Data: blackfriday.MarkdownCommon(markdown),
 		}
 
+		logrus.
+			WithField("commit", id).
+			WithField("tree", tid).
+			WithField("article", article.Name).
+			Info("Article cached")
+
 		n.Index = append(n.Index, article)
 		n.Articles[article.Name] = &article
 	}
@@ -229,6 +278,8 @@ func (c *Cache) Build(tid string, id string) bool {
 	sort.Sort(n.Index)
 
 	c.cache[id] = n
+
+	logrus.WithField("commit", id).WithField("tree", tid).Info("Cache built")
 
 	return true
 }
