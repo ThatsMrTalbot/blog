@@ -19,7 +19,7 @@ type Article struct {
 
 // Preview generates a preview for the article listing
 func (a *Article) Preview(baseURL *url.URL) template.HTML {
-	data, _ := sanitize.HTMLAllowing(string(a.Data), []string{"h1", "a"})
+	data, _ := sanitize.HTMLAllowing(string(a.Data), []string{"h1"})
 	data = strings.Replace(data, "<h1>", "<h3>", -1)
 	data = strings.Replace(data, "</h1>", "</h3>", -1)
 	if len(data) > 500 {

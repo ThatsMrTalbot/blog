@@ -32,7 +32,7 @@ func (b *Blog) IndexModel(ctx context.Context, r *http.Request, index Index) *In
 		Page:     page,
 		Count:    index.Pages(20),
 		Articles: index.Page(page, 20),
-		BaseURL:  b.BaseURL(ctx),
+		BaseURL:  b.BaseURL(ctx, r),
 		GitURL:   b.GitURL(r),
 	}
 }
@@ -41,7 +41,7 @@ func (b *Blog) IndexModel(ctx context.Context, r *http.Request, index Index) *In
 func (b *Blog) ArticleModel(ctx context.Context, r *http.Request, article *Article) *ArticleModel {
 	return &ArticleModel{
 		Article: article,
-		BaseURL: b.BaseURL(ctx),
+		BaseURL: b.BaseURL(ctx, r),
 		GitURL:  b.GitURL(r),
 	}
 }
@@ -113,7 +113,7 @@ func (b *Blog) Article(ctx context.Context, w http.ResponseWriter, r *http.Reque
 }
 
 // BaseURL calculates the base url, for example / or /branch/master/
-func (b *Blog) BaseURL(ctx context.Context) *url.URL {
+func (b *Blog) BaseURL(ctx context.Context, r *http.Request) *url.URL {
 	base := "/"
 	if branch := scaffold.GetParam(ctx, "branch"); branch != "" {
 		base = fmt.Sprintf("/branch/%s/", branch)
@@ -121,8 +121,11 @@ func (b *Blog) BaseURL(ctx context.Context) *url.URL {
 	if commit := scaffold.GetParam(ctx, "commit"); commit != "" {
 		base = fmt.Sprintf("/commit/%s/", commit)
 	}
-	baseURL, _ := url.Parse(base)
-	return baseURL
+	return &url.URL{
+		Scheme: "http",
+		Host:   r.Host,
+		Path:   base,
+	}
 }
 
 // GitURL calculates the git url based on the request host
@@ -140,7 +143,7 @@ func (b *Blog) FileLoaderMiddleware(next scaffold.Handler) scaffold.Handler {
 	return scaffold.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		article, _ := scaffold.GetParam(ctx, "article").String()
 
-		baseURL := b.BaseURL(ctx)
+		baseURL := b.BaseURL(ctx, r)
 		basePath := baseURL.Path
 		if article != "" {
 			basePath = path.Join(baseURL.Path, "article", article) + "/"
