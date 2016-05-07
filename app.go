@@ -2,10 +2,8 @@ package blog
 
 import (
 	"fmt"
-	"html/template"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,11 +34,6 @@ func NewApp(config *Config) (*App, error) {
 		return nil, err
 	}
 
-	templates, err := template.ParseFiles(
-		filepath.Join(config.TemplatePath, "article.tpl"),
-		filepath.Join(config.TemplatePath, "index.tpl"),
-	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +42,6 @@ func NewApp(config *Config) (*App, error) {
 		&inject.Object{Value: &app},
 		&inject.Object{Value: config},
 		&inject.Object{Value: repo},
-		&inject.Object{Value: templates},
 	)
 
 	if err != nil {

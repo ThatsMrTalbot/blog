@@ -1,21 +1,25 @@
 package main
 
 import (
+	"flag"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/ThatsMrTalbot/blog"
 )
 
-func main() {
-	logrus.Info("Opening config")
+var config blog.Config
 
-	config, err := blog.OpenConfig("config.json")
-	if err != nil {
-		logrus.WithError(err).Fatal("Could not open config")
-	}
+func init() {
+	flag.StringVar(&config.Listen, "http", ":8080", "Port to listen on")
+	flag.StringVar(&config.Path, "path", "example.git", "Path to git repository")
+}
+
+func main() {
+	flag.Parse()
 
 	logrus.Info("Initializing application")
 
-	app, err := blog.NewApp(config)
+	app, err := blog.NewApp(&config)
 	if err != nil {
 		logrus.WithError(err).Fatal("Could not start application")
 	}

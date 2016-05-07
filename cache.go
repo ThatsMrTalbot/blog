@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"html/template"
 	"io"
 	"io/ioutil"
 	"sort"
@@ -12,6 +13,9 @@ import (
 )
 
 type node struct {
+	IndexTemplate   *template.Template
+	ArticleTemplate *template.Template
+
 	Index    Index
 	Articles map[string]*Article
 	Tree     *git.Tree
@@ -109,6 +113,122 @@ func (c *Cache) getFile(id string, path string) (io.Reader, bool) {
 	}
 
 	return nil, false
+}
+
+// GetIndexTemplate gets the template from the cache
+func (c *Cache) GetIndexTemplate(tid string, id string) *template.Template {
+	if c.exists(id) {
+		if tpl, ok := c.getIndexTemplate(id); ok {
+			return tpl
+		}
+	} else if c.Build(tid, id) {
+		if tpl, ok := c.getIndexTemplate(id); ok {
+			return tpl
+		}
+	}
+
+	return IndexTemplate
+}
+
+func (c *Cache) getIndexTemplate(id string) (*template.Template, bool) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	if c.cache == nil {
+		return nil, false
+	}
+
+	if n, ok := c.cache[id]; ok {
+		return n.IndexTemplate, true
+	}
+
+	return nil, false
+}
+
+// GetArticleTemplate gets the template from the cache
+func (c *Cache) GetArticleTemplate(tid string, id string) *template.Template {
+	if c.exists(id) {
+		if tpl, ok := c.getArticleTemplate(id); ok {
+			return tpl
+		}
+	} else if c.Build(tid, id) {
+		if tpl, ok := c.getArticleTemplate(id); ok {
+			return tpl
+		}
+	}
+
+	return ArticleTemplate
+}
+
+func (c *Cache) getArticleTemplate(id string) (*template.Template, bool) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	if c.cache == nil {
+		return nil, false
+	}
+
+	if n, ok := c.cache[id]; ok {
+		return n.ArticleTemplate, true
+	}
+
+	return nil, false
+}
+
+func (c *Cache) buildIndexTemplate(tree *git.Tree) *template.Template {
+	blob, err := tree.GetBlobByPath("index.tpl")
+	if err != nil {
+		logrus.WithError(err).Error("Could not read template blob")
+		return IndexTemplate
+	}
+
+	reader, err := blob.Data()
+	if err != nil {
+		logrus.WithError(err).Error("Could not read template blob data")
+		return IndexTemplate
+	}
+
+	bytes, err := ioutil.ReadAll(reader)
+	if err != nil {
+		logrus.WithError(err).Error("Could not read template data")
+		return IndexTemplate
+	}
+
+	tpl, err := template.New("index").Parse(string(bytes))
+	if err != nil {
+		logrus.WithError(err).Error("Could parse template")
+		return IndexTemplate
+	}
+
+	return tpl
+}
+
+func (c *Cache) buildArticleTemplate(tree *git.Tree) *template.Template {
+	blob, err := tree.GetBlobByPath("article.tpl")
+	if err != nil {
+		logrus.WithError(err).Error("Could not read template blob")
+		return ArticleTemplate
+	}
+
+	reader, err := blob.Data()
+	if err != nil {
+		logrus.WithError(err).Error("Could not read template blob data")
+		return ArticleTemplate
+	}
+
+	bytes, err := ioutil.ReadAll(reader)
+	if err != nil {
+		logrus.WithError(err).Error("Could not read template data")
+		return ArticleTemplate
+	}
+
+	tpl, err := template.New("index").Parse(string(bytes))
+	if err != nil {
+		logrus.WithError(err).Error("Could parse template")
+		return ArticleTemplate
+	}
+
+	return tpl
 }
 
 // GetArticle gets an article from tree and commit ids
@@ -276,6 +396,9 @@ func (c *Cache) Build(tid string, id string) bool {
 	}
 
 	sort.Sort(n.Index)
+
+	n.IndexTemplate = c.buildIndexTemplate(tree)
+	n.ArticleTemplate = c.buildArticleTemplate(tree)
 
 	c.cache[id] = n
 

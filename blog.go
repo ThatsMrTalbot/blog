@@ -3,7 +3,6 @@ package blog
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"io"
 	"mime"
 	"net/http"
@@ -20,10 +19,9 @@ import (
 
 // Blog is the blog platfomr
 type Blog struct {
-	Repo      *git.Repository    `inject:""`
-	Config    *Config            `inject:""`
-	Cache     *Cache             `inject:""`
-	Templates *template.Template `inject:""`
+	Repo   *git.Repository `inject:""`
+	Config *Config         `inject:""`
+	Cache  *Cache          `inject:""`
 }
 
 // IndexModel creates an IndexModel for use in the index template
@@ -31,8 +29,6 @@ func (b *Blog) IndexModel(ctx context.Context, r *http.Request, index Index) *In
 	page, _ := scaffold.GetParam(ctx, "page").Int()
 
 	return &IndexModel{
-		Logo:     template.HTML(b.Config.Logo),
-		Title:    template.HTML(b.Config.Title),
 		Page:     page,
 		Count:    index.Pages(20),
 		Articles: index.Page(page, 20),
@@ -44,8 +40,6 @@ func (b *Blog) IndexModel(ctx context.Context, r *http.Request, index Index) *In
 // ArticleModel creates an ArticleModel for use in the article tempalte
 func (b *Blog) ArticleModel(ctx context.Context, r *http.Request, article *Article) *ArticleModel {
 	return &ArticleModel{
-		Logo:    template.HTML(b.Config.Logo),
-		Title:   template.HTML(b.Config.Title),
 		Article: article,
 		BaseURL: b.BaseURL(ctx),
 		GitURL:  b.GitURL(r),
@@ -73,7 +67,7 @@ func (b *Blog) Index(ctx context.Context, w http.ResponseWriter, r *http.Request
 	model := b.IndexModel(ctx, r, index)
 
 	var buffer bytes.Buffer
-	err = b.Templates.ExecuteTemplate(&buffer, "index.tpl", model)
+	err = b.Cache.GetIndexTemplate(tid, id).Execute(&buffer, model)
 	if err != nil {
 		return errors.ConvertErrorStatus(500, err)
 	}
@@ -107,7 +101,7 @@ func (b *Blog) Article(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	model := b.ArticleModel(ctx, r, article)
 
 	var buffer bytes.Buffer
-	err = b.Templates.ExecuteTemplate(&buffer, "article.tpl", model)
+	err = b.Cache.GetArticleTemplate(tid, id).Execute(&buffer, model)
 	if err != nil {
 		return errors.ConvertErrorStatus(500, err)
 	}
@@ -147,7 +141,11 @@ func (b *Blog) FileLoaderMiddleware(next scaffold.Handler) scaffold.Handler {
 		article, _ := scaffold.GetParam(ctx, "article").String()
 
 		baseURL := b.BaseURL(ctx)
-		basePath := path.Join(baseURL.Path, "article", article) + "/"
+		basePath := baseURL.Path
+		if article != "" {
+			basePath = path.Join(baseURL.Path, "article", article) + "/"
+		}
+
 		path := strings.TrimPrefix(r.URL.Path, basePath)
 		tid, id, err := getID(ctx, b.Repo)
 
@@ -174,10 +172,9 @@ func (b *Blog) FileLoaderMiddleware(next scaffold.Handler) scaffold.Handler {
 func (b *Blog) Routes(router *scaffold.Router) {
 	router.AddHandlerBuilder(errors.HandlerBuilder)
 
-	router.Get("/", b.Index)
+	router.Get("", b.Index).Use(b.FileLoaderMiddleware)
 	router.Get("page/:page", b.Index)
-	router.Get("article/:article", b.Article)
-	router.Get("article/:article/:file").Use(b.FileLoaderMiddleware)
+	router.Get("article/:article", b.Article).Use(b.FileLoaderMiddleware)
 }
 
 // Get tree and commit id based off current request

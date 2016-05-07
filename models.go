@@ -8,8 +8,6 @@ import (
 
 // IndexModel is the model passed to the index template
 type IndexModel struct {
-	Logo     template.HTML
-	Title    template.HTML
 	GitURL   string
 	Page     int
 	Count    int
@@ -26,7 +24,11 @@ func (i *IndexModel) Pagination() template.HTML {
 		}
 		page := fmt.Sprintf(`pages/%d`, e)
 		url, _ := i.BaseURL.Parse(page)
-		p += fmt.Sprintf(`<a href="%s">%d</a> `, url, e)
+		classes := "pagination__page"
+		if e == i.Page {
+			classes += " pagination__page--active"
+		}
+		p += fmt.Sprintf(`<a href="%s" class="%s">%d</a> `, url, classes, e)
 	}
 
 	if i.Page-3 > 0 {
@@ -40,14 +42,12 @@ func (i *IndexModel) Pagination() template.HTML {
 		p += fmt.Sprintf(`... <a href="%s">%d</a>`, url, i.Count-1)
 	}
 
-	return template.HTML(p)
-
+	pagination := fmt.Sprintf(`<div class="pagination">%s</div>`, p)
+	return template.HTML(pagination)
 }
 
 // ArticleModel is the model passed to the article template
 type ArticleModel struct {
-	Logo    template.HTML
-	Title   template.HTML
 	GitURL  string
 	Article *Article
 	BaseURL *url.URL
