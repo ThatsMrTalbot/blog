@@ -4,6 +4,9 @@ language: go
 go:
   - tip
 
+services:
+  - docker
+
 before_install:
   - cd cmd/blog
 
