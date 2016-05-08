@@ -4,7 +4,7 @@ RUN mkdir /blog.git
 
 EXPOSE 80 80
 
-ADD blog /
+COPY blog /
 RUN chmod +x /blog
 
 VOLUME ["/blog.git"]
