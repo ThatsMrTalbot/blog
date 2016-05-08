@@ -9,4 +9,5 @@ RUN chmod +x /blog
 
 VOLUME ["/blog.git"]
 
-CMD /blog -path=/blog.git -http=:80
+ENTRYPOINT ["/blog"]
+CMD ["-path=/blog.git", "-http=:80"]
