@@ -111,16 +111,17 @@ func (a *App) LogMetricsMiddleware(next scaffold.Handler) scaffold.Handler {
 
 		rid := RequestID(r)
 
-		log = log.WithField("start", start)
 		log = log.WithField("request_id", rid)
-		log = log.WithField("request_headers", r.Header)
-		log = log.WithField("request_method", r.Method)
-		log = log.WithField("request_cookies", r.Cookies())
-		log = log.WithField("url", r.URL.String())
 
 		ctx = StoreLog(ctx, log)
 
-		log.Info("Serving request")
+		log.
+			WithField("start", start).
+			WithField("request_headers", r.Header).
+			WithField("request_method", r.Method).
+			WithField("request_cookies", r.Cookies()).
+			WithField("url", r.URL.String()).
+			Info("Serving request")
 
 		next.CtxServeHTTP(ctx, w, r)
 

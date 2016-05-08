@@ -6,13 +6,22 @@ import (
 	"io/ioutil"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gogits/git"
 	"github.com/russross/blackfriday"
 )
 
+type commitInfo struct {
+	created time.Time
+	commit  string
+	tree    string
+}
+
 type node struct {
+	Created time.Time
+
 	IndexTemplate   *template.Template
 	ArticleTemplate *template.Template
 
@@ -26,7 +35,79 @@ type Cache struct {
 	Repo *git.Repository `inject:""`
 
 	lock  sync.RWMutex
+	once  sync.Once
 	cache map[string]node
+
+	Branches map[string]*commitInfo
+	Commits  map[string]*commitInfo
+}
+
+// BranchInfo gets the commit and tree ids of a branch
+func (c *Cache) BranchInfo(branch string) (tid string, id string, err error) {
+	c.lock.RLock()
+	if c.Branches != nil {
+		if info, ok := c.Branches[branch]; ok && time.Since(info.created) > time.Second {
+			c.lock.RUnlock()
+			return info.tree, info.commit, nil
+		}
+	}
+	c.lock.RUnlock()
+
+	commit, err := c.Repo.GetCommitOfBranch(branch)
+	if err != nil {
+		return "", "", err
+	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.Branches == nil {
+		c.Branches = make(map[string]*commitInfo)
+	}
+
+	info := &commitInfo{
+		created: time.Now(),
+		commit:  commit.Id.String(),
+		tree:    commit.TreeId().String(),
+	}
+
+	c.Branches[branch] = info
+
+	return info.tree, info.commit, nil
+}
+
+// CommitInfo gets the commit and tree ids of a commit
+func (c *Cache) CommitInfo(commitID string) (tid string, id string, err error) {
+	c.lock.RLock()
+	if c.Commits != nil {
+		if info, ok := c.Commits[commitID]; ok && time.Since(info.created) > time.Second {
+			c.lock.RUnlock()
+			return info.tree, info.commit, nil
+		}
+	}
+	c.lock.RUnlock()
+
+	commit, err := c.Repo.GetCommit(commitID)
+	if err != nil {
+		return "", "", err
+	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.Commits == nil {
+		c.Commits = make(map[string]*commitInfo)
+	}
+
+	info := &commitInfo{
+		created: time.Now(),
+		commit:  commit.Id.String(),
+		tree:    commit.TreeId().String(),
+	}
+
+	c.Commits[commitID] = info
+
+	return info.tree, info.commit, nil
 }
 
 // Clear clears the cache
@@ -35,6 +116,32 @@ func (c *Cache) Clear() {
 	defer c.lock.Unlock()
 
 	c.cache = make(map[string]node)
+}
+
+// Clean removes old cached items
+func (c *Cache) Clean() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	logrus.Info("Starting cache clean")
+
+	for k, n := range c.cache {
+		if time.Since(n.Created) > (time.Minute * 5) {
+			logrus.WithField("id", k).Info("Old item removed from cache")
+			delete(c.cache, k)
+		}
+	}
+}
+
+func (c *Cache) startClean() {
+	runner := func() {
+		ticker := time.NewTicker(time.Minute * 5)
+		for {
+			<-ticker.C
+			c.Clean()
+		}
+	}
+	go runner()
 }
 
 // ClearOne clears the cache for one commit id
@@ -269,15 +376,17 @@ func (c *Cache) exists(id string) bool {
 		return false
 	}
 
-	_, ok := c.cache[id]
+	n, ok := c.cache[id]
 
-	return ok
+	return ok && time.Since(n.Created) < (time.Minute*5)
 }
 
 // Build gets and caches information on a tree and commit id combo
 func (c *Cache) Build(tid string, id string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	c.once.Do(c.startClean)
 
 	logrus.WithField("commit", id).WithField("tree", tid).Info("Building cache")
 
@@ -296,6 +405,7 @@ func (c *Cache) Build(tid string, id string) bool {
 	n := node{
 		Articles: make(map[string]*Article),
 		Tree:     tree,
+		Created:  time.Now(),
 	}
 
 	scanner, err := tree.Scanner()

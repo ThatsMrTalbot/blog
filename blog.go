@@ -52,7 +52,7 @@ func (b *Blog) Index(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	log.Info("Index handler called")
 
-	tid, id, err := getID(ctx, b.Repo)
+	tid, id, err := b.getID(ctx, b.Repo)
 	if err != nil {
 		return errors.ConvertErrorStatus(500, err)
 	}
@@ -84,7 +84,7 @@ func (b *Blog) Article(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	log.Info("Article handler called")
 
-	tid, id, err := getID(ctx, b.Repo)
+	tid, id, err := b.getID(ctx, b.Repo)
 	if err != nil {
 		return errors.ConvertErrorStatus(500, err)
 	}
@@ -150,7 +150,7 @@ func (b *Blog) FileLoaderMiddleware(next scaffold.Handler) scaffold.Handler {
 		}
 
 		path := strings.TrimPrefix(r.URL.Path, basePath)
-		tid, id, err := getID(ctx, b.Repo)
+		tid, id, err := b.getID(ctx, b.Repo)
 
 		if err == nil {
 			if reader, ok := b.Cache.GetFile(tid, id, path); ok {
@@ -175,34 +175,22 @@ func (b *Blog) FileLoaderMiddleware(next scaffold.Handler) scaffold.Handler {
 func (b *Blog) Routes(router *scaffold.Router) {
 	router.AddHandlerBuilder(errors.HandlerBuilder)
 
-	router.Get("", b.Index).Use(b.FileLoaderMiddleware)
+	router.Get("", b.Index)
 	router.Get("page/:page", b.Index)
-	router.Get("article/:article", b.Article).Use(b.FileLoaderMiddleware)
+	router.Get("article/:article", b.Article)
+
+	router.Get(":file").Use(b.FileLoaderMiddleware)
+	router.Get("article/:article").Use(b.FileLoaderMiddleware)
 }
 
 // Get tree and commit id based off current request
-func getID(ctx context.Context, repo *git.Repository) (string, string, error) {
+func (b *Blog) getID(ctx context.Context, repo *git.Repository) (string, string, error) {
 	if branch, err := scaffold.GetParam(ctx, "branch").String(); branch != "" && err == nil {
-		c, err := repo.GetCommitOfBranch(branch)
-		if err != nil {
-			return "", "", err
-		}
-
-		return c.TreeId().String(), c.Id.String(), nil
+		return b.Cache.BranchInfo(branch)
 	}
 	if commit, err := scaffold.GetParam(ctx, "commit").String(); commit != "" && err == nil {
-		c, err := repo.GetCommit(commit)
-		if err != nil {
-			return "", "", err
-		}
-
-		return c.TreeId().String(), c.Id.String(), nil
+		return b.Cache.CommitInfo(commit)
 	}
 
-	c, err := repo.GetCommitOfBranch("master")
-	if err != nil {
-		return "", "", err
-	}
-
-	return c.TreeId().String(), c.Id.String(), nil
+	return b.Cache.BranchInfo("master")
 }
