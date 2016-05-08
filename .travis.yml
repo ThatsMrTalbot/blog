@@ -11,7 +11,7 @@ before_install:
   - cd cmd/blog
 
 script:
-  - go build -o blog
+  - CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" -a -installsuffix cgo -o blog
 
 after_success:
   - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
