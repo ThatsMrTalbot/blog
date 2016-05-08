@@ -9,4 +9,4 @@ WORKDIR /app
 ADD blog /app/
 VOLUME ["/blog.git"]
 
-ENTRYPOINT ["./blog -path=/blog.git -http=:80"]
+ENTRYPOINT ["./blog", "-path=/blog.git", "-http=:80"]
