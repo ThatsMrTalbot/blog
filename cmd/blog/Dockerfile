@@ -7,4 +7,4 @@ EXPOSE 80 80
 ADD blog /
 VOLUME ["/blog.git"]
 
-ENTRYPOINT ["/blog", "-path=/blog.git", "-http=:80"]
+CMD ["/blog", "-path=/blog.git", "-http=:80"]
