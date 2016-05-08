@@ -1,0 +1,83 @@
+{
+	"ImportPath": "github.com/ThatsMrTalbot/blog/cmd/blog",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v63",
+	"Deps": [
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.10.0-16-gcd7d1bb",
+			"Rev": "cd7d1bbe41066b6c1f19780f895901052150a575"
+		},
+		{
+			"ImportPath": "github.com/ThatsMrTalbot/scaffold",
+			"Rev": "0980c31e88816eaeca66a6f405dbc818cb908084"
+		},
+		{
+			"ImportPath": "github.com/ThatsMrTalbot/scaffold/errors",
+			"Rev": "0980c31e88816eaeca66a6f405dbc818cb908084"
+		},
+		{
+			"ImportPath": "github.com/Unknwon/cae",
+			"Rev": "7f5e046bc8a6c3cde743c233b96ee4fd84ee6ecd"
+		},
+		{
+			"ImportPath": "github.com/Unknwon/cae/tz",
+			"Rev": "7f5e046bc8a6c3cde743c233b96ee4fd84ee6ecd"
+		},
+		{
+			"ImportPath": "github.com/Unknwon/cae/zip",
+			"Rev": "7f5e046bc8a6c3cde743c233b96ee4fd84ee6ecd"
+		},
+		{
+			"ImportPath": "github.com/facebookgo/inject",
+			"Rev": "d5029152fecb2a8e68f7f8eb3c6391fc8ee70496"
+		},
+		{
+			"ImportPath": "github.com/facebookgo/structtag",
+			"Rev": "217e25fb96916cc60332e399c9aa63f5c422ceed"
+		},
+		{
+			"ImportPath": "github.com/gogits/git",
+			"Rev": "c93245718680480b223d3b0bae000d9682fed855"
+		},
+		{
+			"ImportPath": "github.com/gogits/webdav",
+			"Rev": "15627ec841feda07b892ba86e5e032b05a3eeb45"
+		},
+		{
+			"ImportPath": "github.com/kennygrant/sanitize",
+			"Comment": "v1.0",
+			"Rev": "ce9fd1f6ce32afaa38b51feea32320fc8875e8e4"
+		},
+		{
+			"ImportPath": "github.com/qiniu/log",
+			"Comment": "v1.0.00-1-ga304a74",
+			"Rev": "a304a74568d6982c5b89de1c68ac8fca3add196a"
+		},
+		{
+			"ImportPath": "github.com/russross/blackfriday",
+			"Comment": "v1.4-26-g151efb0",
+			"Rev": "151efb040f183f3b968215a236c71a2614b62879"
+		},
+		{
+			"ImportPath": "github.com/shurcooL/sanitized_anchor_name",
+			"Rev": "10ef21a441db47d8b13ebcc5fd2310f636973c77"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "d5cd7348bfebdf7dbb6dbb18fa488525f9024293"
+		},
+		{
+			"ImportPath": "golang.org/x/net/html",
+			"Rev": "d5cd7348bfebdf7dbb6dbb18fa488525f9024293"
+		},
+		{
+			"ImportPath": "golang.org/x/net/html/atom",
+			"Rev": "d5cd7348bfebdf7dbb6dbb18fa488525f9024293"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "b776ec39b3e54652e09028aaaaac9757f4f8211a"
+		}
+	]
+}
