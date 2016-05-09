@@ -6,6 +6,7 @@ EXPOSE 80 80
 
 COPY blog /
 RUN chmod +x /blog
+RUN apk --no-cache --no-progress add ca-certificates bash git linux-pam s6 curl openssh socat
 
 VOLUME ["/blog.git"]
 
