@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"flag"
 
 	"github.com/Sirupsen/logrus"
