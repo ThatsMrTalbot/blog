@@ -26,7 +26,7 @@ func main() {
 			Fatal("Repo directory could not be opened")
 	}
 	
-	if info.IsDir() {
+	if !info.IsDir() {
 		logrus.Fatal("Repo provided is not a directory")
 	}
 
