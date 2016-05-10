@@ -54,7 +54,7 @@ func (b *Blog) Index(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	tid, id, err := b.getID(ctx, b.Repo)
 	if err != nil {
-		return errors.ConvertErrorStatus(500, err)
+		return ErrorReponse(500, "Could not get commit id", err)
 	}
 
 	index, ok := b.Cache.GetIndex(tid, id)
@@ -69,7 +69,7 @@ func (b *Blog) Index(ctx context.Context, w http.ResponseWriter, r *http.Request
 	var buffer bytes.Buffer
 	err = b.Cache.GetIndexTemplate(tid, id).Execute(&buffer, model)
 	if err != nil {
-		return errors.ConvertErrorStatus(500, err)
+		return ErrorReponse(500, "Could not execute index template", err)
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -86,7 +86,7 @@ func (b *Blog) Article(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	tid, id, err := b.getID(ctx, b.Repo)
 	if err != nil {
-		return errors.ConvertErrorStatus(500, err)
+		return ErrorReponse(500, "Could not get commit id", err)
 	}
 
 	name, _ := scaffold.GetParam(ctx, "article").String()
@@ -103,7 +103,7 @@ func (b *Blog) Article(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	var buffer bytes.Buffer
 	err = b.Cache.GetArticleTemplate(tid, id).Execute(&buffer, model)
 	if err != nil {
-		return errors.ConvertErrorStatus(500, err)
+		return ErrorReponse(500, "Could not execute article template", err)
 	}
 
 	w.Header().Set("Content-Type", "text/html")
