@@ -16,6 +16,18 @@ func init() {
 
 func main() {
 	flag.Parse()
+	
+	info, err := os.Stat(config.Path)
+	if err != nil {
+		logrus.
+			WithError(err).
+			WithField("path", config.Path).
+			Fatal("Repo directory could not be opened")
+	}
+	
+	if info.IsDir() {
+		logrus.Fatal("Repo provided is not a directory")
+	}
 
 	logrus.Info("Initializing application")
 
