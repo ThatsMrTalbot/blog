@@ -46,7 +46,7 @@ type Cache struct {
 func (c *Cache) BranchInfo(branch string) (tid string, id string, err error) {
 	c.lock.RLock()
 	if c.Branches != nil {
-		if info, ok := c.Branches[branch]; ok && time.Since(info.created) > time.Second {
+		if info, ok := c.Branches[branch]; ok && time.Since(info.created) < time.Second {
 			c.lock.RUnlock()
 			return info.tree, info.commit, nil
 		}
@@ -80,7 +80,7 @@ func (c *Cache) BranchInfo(branch string) (tid string, id string, err error) {
 func (c *Cache) CommitInfo(commitID string) (tid string, id string, err error) {
 	c.lock.RLock()
 	if c.Commits != nil {
-		if info, ok := c.Commits[commitID]; ok && time.Since(info.created) > time.Second {
+		if info, ok := c.Commits[commitID]; ok && time.Since(info.created) < time.Second {
 			c.lock.RUnlock()
 			return info.tree, info.commit, nil
 		}
