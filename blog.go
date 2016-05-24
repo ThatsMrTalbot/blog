@@ -121,16 +121,10 @@ func (b *Blog) BaseURL(ctx context.Context, r *http.Request) *url.URL {
 	if commit := scaffold.GetParam(ctx, "commit"); commit != "" {
 		base = fmt.Sprintf("/commit/%s/", commit)
 	}
-	
-	scheme := "http"
-	if r.URL.Scheme == "https" {
-		scheme = "https"
-	}
-	
+
 	return &url.URL{
-		Scheme: scheme,
-		Host:   r.Host,
-		Path:   base,
+		Host: r.Host,
+		Path: base,
 	}
 }
 
